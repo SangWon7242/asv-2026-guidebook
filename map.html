@@ -484,9 +484,9 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-route]"); if (!b) return;
   const id = b.dataset.route; select(current === id ? null : id);
   if (b.classList.contains("card") && matchMedia("(max-width:860px)").matches && current) stage.scrollIntoView({behavior:"smooth", block:"start"});
-  const tabFor = id in {hyu:1, gate:1, conv:1, hyuin:1} ? "bus" : id === "shuttle" ? "sub" : "car";
-  if (b.closest(".lb")) openTab(tabFor);
+  if (b.closest(".lb")) openTab(tabFor(id));
 });
+const tabFor = id => id in {hyu:1, gate:1, conv:1, hyuin:1} ? "bus" : id === "shuttle" ? "sub" : "car";
 function openTab(name){
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + name));
@@ -529,7 +529,7 @@ renderer.setAnimationLoop(() => {
 });
 controls.addEventListener("start", () => { fly = null; });
 const q = new URLSearchParams(location.search).get("route");
-if (q && M.routes[q]) select(q);
+if (q && M.routes[q]) { select(q); openTab(tabFor(q)); }
 </script>
 </body>
 </html>
