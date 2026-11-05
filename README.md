@@ -4,7 +4,7 @@
 공식 홈페이지(asv-2026-delta.vercel.app)에 공개된 정보(2026.11.05 기준)를 정리했습니다. 오시는 길(16–19쪽)은 쪽마다 출처를 적었습니다.
 
 - 웹으로 보기: https://asv.dlabansan.com/
-- 3D 길안내 지도: https://asv.dlabansan.com/map.html
+- 3D 지도(오시는 길 · 행사장 배치): https://asv.dlabansan.com/map.html , 행사장 배치 바로가기 https://asv.dlabansan.com/map.html?view=site
 - 인쇄용 PDF(A5): `asv-2026-guidebook-a5.pdf`
 
 지도 데이터 © OpenStreetMap 기여자 (ODbL)
