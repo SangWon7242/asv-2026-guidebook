@@ -40,7 +40,8 @@ a{color:inherit}
 .stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
 .labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .lb{position:absolute;left:0;top:0;transform-origin:0 0;white-space:nowrap;font:800 12px/1.2 var(--f-ko);pointer-events:none;will-change:transform}
-.lb.hide{visibility:hidden}
+.lb{transition:opacity .18s ease}
+.lb.hide{opacity:0;visibility:hidden;transition:opacity .18s ease,visibility 0s .18s}
 .lb .t{display:inline-flex;align-items:center;gap:5px;padding:4px 8px 4px 6px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(11,13,16,.18),0 4px 12px -4px rgba(11,13,16,.3);color:var(--ink)}
 .lb .t i{font-style:normal;font:800 10.5px/1 var(--f-mono);border-radius:999px;padding:3px 5px;color:#fff;background:var(--c,var(--ink))}
 .lb .t small{font:600 11px/1.2 var(--f-ko);color:var(--ink-3)}
@@ -121,8 +122,22 @@ a{color:inherit}
   .panel{border-radius:0;border-left:0;padding:18px 16px 28px;overflow:visible}
   .tabs{top:0}
   .hint .osm{margin-left:0}
-  .lb{font-size:11.5px}
+  .lb{font-size:10.5px}
+  .lb .t{gap:3px;padding:3px 6px 3px 4px}
+  .lb .t i{font-size:9px;padding:2px 4px}
+  .lb .t small{display:none}          /* 휴대폰에서는 보조 글자를 숨기고, 고른 정류장만 펼친다 */
+  .lb.on .t small{display:inline}
+  .lb.goal .t{font-size:12px;padding:4px 9px 4px 5px}
+  .lb.bld{font-size:9.5px}
+  .lb.land{font-size:10.5px}
+  .ctrl{right:8px;top:8px;gap:4px}
+  .ctrl button{font-size:11px;padding:7px 9px}
+  .compass{left:8px;top:8px;width:36px;height:36px}
+  .hint{left:8px;right:8px;bottom:8px;gap:4px}
+  .hint span{font-size:10.5px;padding:3px 7px}
 }
+.hint .how{transition:opacity .4s}
+.hint .how.gone{opacity:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
@@ -143,7 +158,7 @@ a{color:inherit}
       <button id="vreset">처음 위치</button>
     </div>
     <div class="labels" id="labels"></div>
-    <div class="hint"><span>한 손가락: 돌리기 · 두 손가락: 확대·이동</span><span class="osm">지도 데이터 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 기여자</span></div>
+    <div class="hint"><span class="how">한 손가락: 돌리기 · 두 손가락: 확대·이동</span><span class="osm">지도 데이터 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 기여자</span></div>
     <div class="err" id="err">이 기기에서는 3D 지도를 열 수 없습니다.<br>오른쪽(아래) 안내와 가이드북의 지도를 이용해 주세요.</div>
   </div>
 
@@ -261,8 +276,11 @@ const stage = document.getElementById("stage");
 let renderer;
 try { renderer = new THREE.WebGLRenderer({antialias:true}); }
 catch(e){ document.getElementById("err").style.display="grid"; throw e; }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const MOBILE = matchMedia("(max-width:860px)");
+// 화면 해상도를 너무 높이면 돌릴 때 끊긴다
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE.matches ? 1.5 : 1.75));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;   // 건물·조명이 움직이지 않으니 그림자는 한 번만 그린다
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 stage.prepend(renderer.domElement);
 renderer.domElement.setAttribute("aria-label","캠퍼스 3D 지도");
@@ -358,7 +376,7 @@ disc.rotation.x = -Math.PI / 2; disc.position.copy(V(goal.xy, .3)); scene.add(di
 const pulse = new THREE.Mesh(new THREE.RingGeometry(24, 28, 64), new THREE.MeshBasicMaterial({color:C.volt, transparent:true, opacity:.8, side:THREE.DoubleSide}));
 pulse.rotation.x = -Math.PI / 2; pulse.position.copy(V(goal.xy, .4)); scene.add(pulse);
 const beacon = new THREE.Mesh(new THREE.ConeGeometry(7, 16, 4), mat(C.volt, {emissive:C.volt, emissiveIntensity:.35}));
-beacon.rotation.x = Math.PI; beacon.position.copy(V(goal.xy, 46)); beacon.castShadow = true; scene.add(beacon);
+beacon.rotation.x = Math.PI; beacon.position.copy(V(goal.xy, 46)); scene.add(beacon);
 
 /* 핀: 정류장·주차장 */
 function pin(xy, color, h = 30, head = "sphere"){
@@ -403,7 +421,7 @@ for (const [id, r] of Object.entries(M.routes)) {
 const labelsEl = document.getElementById("labels");
 const labels = [];
 function label(xy, h, html, cls, pri, opts = {}){
-  const el = document.createElement("div"); el.className = "lb " + cls; el.innerHTML = html;
+  const el = document.createElement("div"); el.className = "lb hide " + cls; el.innerHTML = html;   // 자리 잡기 전에는 숨겨 둔다
   if (opts.c) el.style.setProperty("--c", opts.c);
   labelsEl.appendChild(el);
   const L = {el, v:V(xy, h), pri, maxDist:opts.maxDist || 1e9, route:opts.route, below:!!opts.below, w:0, h:0};
@@ -432,21 +450,34 @@ M.buildings.filter(b => b.n && b.k !== "apartments" && b.k !== "residential" && 
 });
 
 const proj = new THREE.Vector3();
-function placeLabels(){
-  const w = stage.clientWidth, h = stage.clientHeight, placed = [];
-  const camDist = camera.position.distanceTo(controls.target);
-  for (const L of [...labels].sort((a, b) => b.pri - a.pri)) {
+// 위치는 매 프레임 옮기되, 겹침 검사(누구를 보일지)는 0.14초마다만 한다 — 돌릴 때 이름표가 깜빡이지 않게
+const sorted = labels.slice().sort((a, b) => b.pri - a.pri);
+let stageW = 0, stageH = 0, lastCull = -1e9, needMeasure = true;
+document.fonts?.ready.then(() => { needMeasure = true; });
+function placeLabels(now){
+  if (needMeasure) { for (const L of labels) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; } needMeasure = false; lastCull = -1e9; }
+  const w = stageW, h = stageH, camDist = camera.position.distanceTo(controls.target);
+  const recull = now - lastCull > 140; if (recull) lastCull = now;
+  const keep = MOBILE.matches ? 100 : 85;    // 이 순위 이상은 겹쳐도 늘 보인다
+  const placed = [];
+  for (const L of sorted) {
     proj.copy(L.v).project(camera);
     const x = (proj.x + 1) / 2 * w, y = (1 - proj.y) / 2 * h;
-    let show = proj.z < 1 && x > -40 && x < w + 40 && y > -20 && y < h + 20 && camDist < L.maxDist;
-    if (show) {
-      if (!L.w) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
-      const top = L.below ? y + 6 : y - L.h;
-      const r = {x0:x - L.w / 2, y0:top, x1:x + L.w / 2, y1:top + L.h};
-      if (L.pri < 85 && placed.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0)) show = false;
-      else { placed.push(r); L.el.style.transform = `translate(${(x - L.w / 2).toFixed(1)}px,${top.toFixed(1)}px)`; }
+    const inView = proj.z < 1 && x > -40 && x < w + 40 && y > -20 && y < h + 20 && camDist < L.maxDist * (MOBILE.matches ? .8 : 1);
+    const left = x - L.w / 2, top = L.below ? y + 6 : y - L.h;
+    if (recull) {
+      let show = inView;
+      if (show) {
+        const r = {x0:left, y0:top, x1:left + L.w, y1:top + L.h};
+        const force = L.pri >= keep || (L.route && L.route === current);
+        if (!force && placed.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0)) show = false;
+        else placed.push(r);
+      }
+      if (show !== L.on) { L.on = show; L.el.classList.toggle("hide", !show); }
+    } else if (L.on && !inView) { L.on = false; L.el.classList.add("hide"); }
+    if (L.on && (Math.abs(left - L.tx) > .3 || Math.abs(top - L.ty) > .3 || L.tx === undefined)) {
+      L.tx = left; L.ty = top; L.el.style.transform = `translate3d(${left.toFixed(1)}px,${top.toFixed(1)}px,0)`;
     }
-    L.el.classList.toggle("hide", !show);
   }
 }
 
@@ -478,8 +509,21 @@ function select(id){
   const top = document.getElementById("vtop").getAttribute("aria-pressed") === "true";
   const dir = top ? new THREE.Vector3(0, 1, .0001) : camera.position.clone().sub(controls.target).normalize();
   if (!top && dir.y < .45) { dir.y = .7; dir.normalize(); }
-  flyTo(c, c.clone().add(dir.multiplyScalar(span * 1.9 + 120)));
+  const fit = MOBILE.matches ? span * 2.7 + 170 : span * 1.9 + 120;   // 좁은 화면은 더 멀리서 봐야 경로와 이름표가 다 들어온다
+  flyTo(c, c.clone().add(dir.multiplyScalar(fit)));
 }
+// 이름표 버튼 위에서 누르고 끌면 지도 돌리기로 넘긴다(그냥 누르면 버튼 클릭)
+labelsEl.addEventListener("pointerdown", e => {
+  if (!e.target.closest("button")) return;
+  const x0 = e.clientX, y0 = e.clientY;
+  const move = m => {
+    if (Math.hypot(m.clientX - x0, m.clientY - y0) < 6) return;
+    cleanup();
+    renderer.domElement.dispatchEvent(new PointerEvent("pointerdown", {pointerId:e.pointerId, pointerType:e.pointerType, isPrimary:true, button:0, buttons:1, clientX:x0, clientY:y0, bubbles:true}));
+  };
+  const cleanup = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", cleanup); };
+  addEventListener("pointermove", move); addEventListener("pointerup", cleanup);
+});
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-route]"); if (!b) return;
   const id = b.dataset.route; select(current === id ? null : id);
@@ -497,10 +541,11 @@ document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => openTab
 function resize(){
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-  labels.forEach(L => L.w = 0);
+  stageW = w; stageH = h; needMeasure = true;
 }
 new ResizeObserver(resize).observe(stage);
 camera.position.copy(HOME.pos); controls.target.copy(HOME.target); resize();
+renderer.shadowMap.needsUpdate = true;
 const needle = document.getElementById("needle");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clock = new THREE.Clock();
@@ -511,6 +556,12 @@ renderer.setAnimationLoop(() => {
     const e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     controls.target.lerpVectors(fly.ft, fly.tt, e); camera.position.lerpVectors(fly.fp, fly.tp, e);
     if (k >= 1) fly = null;
+  }
+  if (zoomTarget !== null) {
+    const off = camera.position.clone().sub(controls.target), d = off.length();
+    const nd = reduce ? zoomTarget : d + (zoomTarget - d) * Math.min(1, dt * 9);
+    camera.position.copy(controls.target).add(off.setLength(nd));
+    if (Math.abs(nd - zoomTarget) < .4) zoomTarget = null;
   }
   controls.update();
   if (!reduce) {
@@ -525,9 +576,17 @@ renderer.setAnimationLoop(() => {
   }
   needle.style.transform = `rotate(${(controls.getAzimuthalAngle() * 180 / Math.PI).toFixed(1)}deg)`;
   renderer.render(scene, camera);
-  placeLabels();
+  placeLabels(performance.now());
 });
-controls.addEventListener("start", () => { fly = null; });
+controls.addEventListener("start", () => { fly = null; document.querySelector(".hint .how")?.classList.add("gone"); });
+// 휠 확대·축소: OrbitControls는 한 칸씩 툭툭 움직이므로, 목표 거리를 정해 두고 매 프레임 조금씩 따라가게 한다
+let zoomTarget = null;
+stage.addEventListener("wheel", e => {   // 이름표 위에서 굴려도 확대되도록 지도 영역 전체에서 받는다
+  e.preventDefault(); e.stopImmediatePropagation(); fly = null;
+  const base = zoomTarget ?? camera.position.distanceTo(controls.target);
+  const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+  zoomTarget = THREE.MathUtils.clamp(base * Math.pow(1.0012, dy), controls.minDistance, controls.maxDistance);
+}, {capture:true, passive:false});
 const q = new URLSearchParams(location.search).get("route");
 if (q && M.routes[q]) { select(q); openTab(tabFor(q)); }
 </script>
