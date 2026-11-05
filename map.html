@@ -288,7 +288,7 @@ renderer.domElement.setAttribute("aria-label","캠퍼스 3D 지도");
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe8ebf0);
 scene.fog = new THREE.Fog(0xe8ebf0, 1400, 2600);
-const camera = new THREE.PerspectiveCamera(38, 1, 2, 6000);
+const camera = new THREE.PerspectiveCamera(38, 1, 8, 4000);   // near를 너무 작게 잡으면 먼 곳의 깊이 정밀도가 떨어져 바닥이 번쩍인다
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08;
 controls.maxPolarAngle = Math.PI * .44; controls.minDistance = 90; controls.maxDistance = 1700;
@@ -306,18 +306,21 @@ const ring = p => { const q = p.slice(); if (q.length > 2 && q[0][0] === q.at(-1
 const shape = p => new THREE.Shape(ring(p).map(([x, y]) => new THREE.Vector2(x, y)));
 const flat = (geo, h) => { geo.rotateX(-Math.PI / 2); geo.translate(0, h, 0); return geo; };
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({color, roughness:.92, metalness:0, ...o});
+// 바닥에 깔리는 면(땅·잔디·주차장·도로)은 높이 차가 몇 cm뿐이라 깊이로 가리면 움직일 때 번갈아 번쩍인다(z-fighting).
+// 깊이를 쓰지 않고 정해진 순서대로 아래부터 그린다. 건물은 그다음에 그려지므로 그대로 위에 올라온다.
+const flatLayer = (m, order) => { m.material.depthWrite = false; m.renderOrder = order; return m; };
 
 /* ground */
 const [bx0, by0, bx1, by1] = M.box;
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), mat(0xe9ece9));
-ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(flatLayer(ground, -20));
 
 /* areas */
-const AREA = {campus:[0xf6f6f2, .02], green:[0xd5ead7, .04], water:[0x9fcdf5, .06], parking:[0xffe8a3, .08]};
-for (const [k, [col, h]] of Object.entries(AREA)) {
+const AREA = {campus:[0xf6f6f2, .02, -19], green:[0xd5ead7, .04, -18], water:[0x9fcdf5, .06, -17], parking:[0xffe8a3, .08, -16]};
+for (const [k, [col, h, order]] of Object.entries(AREA)) {
   const gs = M.areas.filter(a => a.k === k).map(a => flat(new THREE.ShapeGeometry(shape(a.p)), h));
   if (!gs.length) continue;
-  const m = new THREE.Mesh(mergeGeometries(gs), mat(col)); m.receiveShadow = true; scene.add(m);
+  const m = new THREE.Mesh(mergeGeometries(gs), mat(col)); m.receiveShadow = true; scene.add(flatLayer(m, order));
 }
 
 /* roads: 선분마다 사각형 + 꺾이는 곳마다 원 */
@@ -331,7 +334,7 @@ function ribbon(lines, h){
       const d = b.clone().sub(a); if (d.length() < .01) continue;
       const n = new THREE.Vector2(-d.y, d.x).normalize().multiplyScalar(r);
       const a1 = a.clone().add(n), a2 = a.clone().sub(n), b1 = b.clone().add(n), b2 = b.clone().sub(n);
-      push(a1, a2, b1, b1, a2, b2);
+      push(a1, b1, a2, b1, b2, a2);   // 위에서 볼 때 반시계 방향이어야 앞면으로 그려진다
     }
     for (const q of p) {
       const c = new THREE.Vector2(q[0], -q[1]);
@@ -347,7 +350,7 @@ const FOOT = new Set(["footway", "path", "pedestrian", "steps", "cycleway"]);
 const roadEdge = new THREE.Mesh(ribbon(M.roads.filter(r => !FOOT.has(r.c)).map(r => ({p:r.p, w:r.w + 2})), .10), mat(0xc9ced6));
 const road = new THREE.Mesh(ribbon(M.roads.filter(r => !FOOT.has(r.c)), .14), mat(0xffffff));
 const foot = new THREE.Mesh(ribbon(M.roads.filter(r => FOOT.has(r.c)), .16), mat(0xfaf7ee));
-for (const m of [roadEdge, road, foot]) { m.receiveShadow = true; scene.add(m); }
+[roadEdge, road, foot].forEach((m, i) => { m.receiveShadow = true; scene.add(flatLayer(m, -15 + i)); });
 
 /* buildings */
 const FEST_B = {"제1학술관":1, "학생복지관":1, "라이언스홀":1};
@@ -372,7 +375,7 @@ for (const [k, gs] of Object.entries(groups)) {
 /* 민주광장 표시: 바닥 원 + 맥박 */
 const goal = M.places.find(p => p.id === "plaza");
 const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 48), new THREE.MeshBasicMaterial({color:C.volt, transparent:true, opacity:.22}));
-disc.rotation.x = -Math.PI / 2; disc.position.copy(V(goal.xy, .3)); scene.add(disc);
+disc.rotation.x = -Math.PI / 2; disc.position.copy(V(goal.xy, .3)); disc.material.depthWrite = false; scene.add(disc);
 const pulse = new THREE.Mesh(new THREE.RingGeometry(24, 28, 64), new THREE.MeshBasicMaterial({color:C.volt, transparent:true, opacity:.8, side:THREE.DoubleSide}));
 pulse.rotation.x = -Math.PI / 2; pulse.position.copy(V(goal.xy, .4)); scene.add(pulse);
 const beacon = new THREE.Mesh(new THREE.ConeGeometry(7, 16, 4), mat(C.volt, {emissive:C.volt, emissiveIntensity:.35}));
@@ -450,14 +453,20 @@ M.buildings.filter(b => b.n && b.k !== "apartments" && b.k !== "residential" && 
 });
 
 const proj = new THREE.Vector3();
-// 위치는 매 프레임 옮기되, 겹침 검사(누구를 보일지)는 0.14초마다만 한다 — 돌릴 때 이름표가 깜빡이지 않게
+// 위치는 매 프레임 옮기고, 겹침 검사(누구를 보일지)는 지도가 멈췄을 때만 한다
 const sorted = labels.slice().sort((a, b) => b.pri - a.pri);
-let stageW = 0, stageH = 0, lastCull = -1e9, needMeasure = true;
+let stageW = 0, stageH = 0, needMeasure = true, forceCull = true, cullDirty = true, lastMoveT = 0;
+const lastCam = new THREE.Vector3(), lastTgt = new THREE.Vector3();
 document.fonts?.ready.then(() => { needMeasure = true; });
 function placeLabels(now){
-  if (needMeasure) { for (const L of labels) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; } needMeasure = false; lastCull = -1e9; }
+  if (needMeasure) { for (const L of labels) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; } needMeasure = false; forceCull = true; }
   const w = stageW, h = stageH, camDist = camera.position.distanceTo(controls.target);
-  const recull = now - lastCull > 140; if (recull) lastCull = now;
+  // 지도를 움직이는 동안에는 누구를 보일지 다시 고르지 않는다(이름표가 켜졌다 꺼졌다 하지 않게). 멈추고 0.2초 뒤에 고른다.
+  if (camera.position.distanceToSquared(lastCam) > 1e-4 || controls.target.distanceToSquared(lastTgt) > 1e-4) {
+    lastCam.copy(camera.position); lastTgt.copy(controls.target); lastMoveT = now; cullDirty = true;
+  }
+  const recull = forceCull || (cullDirty && now - lastMoveT > 200);
+  if (recull) { forceCull = false; cullDirty = false; }
   const keep = MOBILE.matches ? 100 : 85;    // 이 순위 이상은 겹쳐도 늘 보인다
   const placed = [];
   for (const L of sorted) {
@@ -494,7 +503,7 @@ document.getElementById("v3d").onclick = () => { const t = controls.target.clone
 
 let current = null;
 function select(id){
-  current = id;
+  current = id; forceCull = true;
   for (const [k, o] of Object.entries(routeObjs)) o.g.visible = (k === id) || (id === "hyu" && k === "hyuin");
   document.querySelectorAll("[data-route]").forEach(el => {
     const on = el.dataset.route === id;
