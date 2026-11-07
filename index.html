@@ -546,7 +546,7 @@ sheet("", zhead("X","특별 프로그램과 먹거리","Special · 공연·전�
   </dl></div>`, {label:"특별 프로그램·먹거리"});
 
 /* ---- 16–19. 오시는 길 · 버스 · 주차 ----
-   출처: 축제 홈페이지(버스 노선·자가용 경로·주차장 안내도·운영시간), 카카오맵(정류장 이름·번호), 한양대(셔틀·주차 요금), OpenStreetMap(지도·걷는 거리) */
+   출처: 축제 홈페이지(버스 노선·자가용 경로·주차장 안내도·운영시간), 카카오맵(정류장 이름·번호), 한양대(셔틀·평소 주차 요금), 축제 현장 확인(축제 기간 주차 무료), OpenStreetMap(지도·걷는 거리) */
 const WALK = {"hyu": 453, "hyuin": 451, "gate": 490, "conv": 311, "shuttle": 363, "P1": 366, "P2": 501, "P3": 352, "P4": 351, "P5": 403, "PD": 717};                       // 민주광장까지 걷는 거리(m), 지도 데이터로 계산
 const wmin = m => Math.max(1, Math.ceil(m / 67));
 const walk = id => `${wmin(WALK[id])}분 · ${WALK[id]}m`;
@@ -592,16 +592,14 @@ sheet("", `<div class="kicker">BY BUS · SUBWAY</div><h2>버스 · 지하철로 
 
 const LOTS = [["제1주차장",143,"P1","정문 옆, 컨벤션센터 정류장 앞"],["제2주차장",260,"P2","제1공학관 옆"],["제3주차장",335,"P3","학술정보관 남쪽"],["제4주차장",85,"P4","본관 옆"],["제5주차장",278,"P5","언론정보관 북쪽"],["기숙사 주차장",146,"PD","창의인재원 쪽, 지도 남쪽 밖"]];
 sheet("", `<div class="kicker">BY CAR · PARKING</div><h2>자가용 · 주차</h2>
-  <div class="box warn" style="margin-top:14px"><b>주차 정보는 바뀔 수 있습니다</b><br>주차장 위치와 면수는 축제 홈페이지에 올라온 <b>주차장 안내도</b>를 따랐다. 이 안내도에는 연도가 없고 2025년 행사장 배치와 함께 실려 있다. 요금은 한양대 스마트주차시스템 기준(2026.11.05 확인)이며, ERICA캠퍼스 주차는 <b>2026년 9월 1일부터 전면 유료</b>다. 축제 당일 주차 운영은 아직 공지되지 않았으니 방문 전 꼭 확인하자.</div>
+  <div class="box warn" style="margin-top:14px"><b>축제 기간(11월 7–8일) 주차는 모두 무료</b><br>행사 기간에는 캠퍼스 주차장을 무료로 운영했다(축제 현장 확인). 주차장 위치와 면수는 축제 홈페이지에 올라온 <b>주차장 안내도</b>를 따랐는데, 이 안내도에는 연도가 없고 2025년 행사장 배치와 함께 실려 있어 <b>바뀔 수 있다</b>.</div>
   <table class="tbl" style="margin-top:14px"><thead><tr><th>주차장</th><th>면수</th><th>민주광장까지</th><th>위치</th></tr></thead><tbody>
     ${LOTS.map(([n,c,id,w])=>`<tr><th>${n}</th><td class="n">${c}대</td><td class="n">${walk(id)}</td><td>${w}</td></tr>`).join("")}
   </tbody></table>
-  <div class="sec-label" style="margin:16px 0 0">주차 요금 · 일반 차량</div>
+  <div class="sec-label" style="margin:16px 0 0">주차 요금</div>
   <table class="tbl" style="margin-top:6px"><tbody>
-    <tr><th>15분 미만</th><td>무료 (들어온 게이트로 나갈 때)</td></tr>
-    <tr><th>30분 미만</th><td>1,500원 (기본요금)</td></tr>
-    <tr><th>30분 이상</th><td>기본요금 + 10분마다 500원 · 하루 최대 24,000원</td></tr>
-    <tr><th>결제</th><td>나갈 때 정산소 · 무인 정산기에서 카드 결제</td></tr>
+    <tr><th style="white-space:nowrap">축제 기간</th><td><b>무료</b> · 11월 7일(토)–8일(일), 축제 현장 확인</td></tr>
+    <tr><th>평소</th><td>2026년 9월 1일부터 전면 유료 · 30분 미만 1,500원, 이후 10분마다 500원 (한양대 스마트주차시스템, 11.05 확인)</td></tr>
   </tbody></table>
   <div class="sec-label" style="margin:16px 0 0">자가용으로 오는 길 · 공식 안내</div>
   <table class="tbl" style="margin-top:6px"><tbody>
@@ -620,7 +618,7 @@ sheet("back", `<div class="kicker">INFORMATION</div><h2>방문 전에 확인하�
     <dt>웹사이트</dt><dd class="mono" style="font-size:13px">asv-2026-delta.vercel.app</dd>
     <dt>3D 길안내</dt><dd class="mono" style="font-size:13px">asv.dlabansan.com/map.html</dd>
   </dl>
-  <div class="check"><b>아직 공지되지 않은 정보</b><br>공연 시간, 축제 당일 주차 운영, 문의처는 홈페이지에 아직 공개되지 않았다(11월 7일 기준). 방문 전에 공식 홈페이지를 다시 확인하자.</div>
+  <div class="check"><b>아직 공지되지 않은 정보</b><br>공연 시간과 문의처는 홈페이지에 아직 공개되지 않았다(11월 7일 기준). 축제 기간 주차는 무료다(현장 확인). 방문 전에 공식 홈페이지를 다시 확인하자.</div>
   <div class="inst"><div class="sec-label">포스터 속 ASV 12개 기관</div><p>${["안산시","한양대 ERICA","KTL","농어촌연구원","경기테크노파크","KITECH","KERI","LG이노텍","중소벤처기업연수원","안산시 청소년재단","고려대 안산병원","안산교육지원청"].map(n=>`<b>${n}</b>`).join("")}</p></div>
   <p class="slogan"><small>SLOGAN</small>미래와 함께하는 혁신도시 안산, ASV</p>
   <div class="credit"><img src="${LOGO_W}" alt="디랩AI"><p><b>이 가이드북은 디랩AI가 만들었습니다</b>2026 ASV 과학축제 공식 홈페이지에 공개된 정보(2026.11.07 기준)를 참가자가 보기 쉽게 정리한 안내서입니다.</p></div>`, {label:"안내", dark:true});
